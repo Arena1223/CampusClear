@@ -1,0 +1,9 @@
+# 统一换行：源码用 LF，Windows 脚本用 CRLF，避免跨平台 diff 噪声
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.sh  text eol=lf
+*.onnx binary
+*.jpg binary
+*.png binary

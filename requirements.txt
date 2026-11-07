@@ -1,0 +1,15 @@
+# CampusClear 运行时依赖（离线安装用）
+# 生成离线包：
+#   pip download -r requirements.txt -d deploy/offline/wheels --only-binary=:all:
+# 离线安装：
+#   pip install --no-index --find-links=deploy/offline/wheels -r requirements.txt
+#
+# 注意：onnxruntime-gpu 与 onnxruntime 互斥，无 NVIDIA 显卡的内网机器请改用 onnxruntime。
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+numpy==2.2.1
+opencv-python-headless==4.11.0.86
+onnxruntime-gpu==1.20.1
+argon2-cffi==23.1.0
+PyJWT==2.10.1

@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "campusclear"
+version = "0.9.0"
+description = "CampusClear 明眸 - 校园内网 100% 离线监控视频实时清晰化系统"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "CampusClear Project" }]
+keywords = ["onnxruntime", "fastapi", "rtsp", "video-super-resolution", "offline", "campus"]
+
+# 运行时依赖：全部可在离线环境用 wheel 安装，无任何需要公网回调的包
+dependencies = [
+    "fastapi>=0.110,<0.116",
+    "uvicorn[standard]>=0.27,<0.35",
+    "pydantic>=2.6,<3",
+    "numpy>=1.24,<2.3",
+    "opencv-python-headless>=4.8,<5",
+    "onnxruntime-gpu>=1.17,<2",
+    "argon2-cffi>=23.1",
+    "PyJWT>=2.8,<3",
+]
+
+[project.optional-dependencies]
+# CPU 兜底：内网机器无 NVIDIA 卡时替换 onnxruntime-gpu
+cpu = ["onnxruntime>=1.17,<2"]
+dev = ["pytest>=8.0", "httpx>=0.27", "ruff>=0.5"]
+
+[project.scripts]
+campusclear = "campusclear.main:run"
+campusclear-client = "campusclear.app:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+campusclear = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
