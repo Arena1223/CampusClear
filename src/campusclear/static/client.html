@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>明眸 · 校园监控增强客户端</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#171c22; --panel2:#1e242c; --line:#2a323c;
+    --fg:#e8edf2; --muted:#93a1b0; --accent:#3ea6ff; --accent2:#26d07c; --warn:#ffb020;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;
+       background:var(--bg);color:var(--fg)}
+  header{display:flex;align-items:center;gap:16px;padding:12px 20px;
+         background:var(--panel);border-bottom:1px solid var(--line)}
+  header .brand{font-weight:700;font-size:17px}
+  header .brand small{color:var(--muted);font-weight:400;margin-left:8px;font-size:12px}
+  nav{display:flex;gap:6px;margin-left:12px}
+  nav button{background:transparent;color:var(--muted);border:1px solid transparent;
+             padding:7px 16px;border-radius:8px;font-size:14px;cursor:pointer}
+  nav button.on{background:var(--panel2);color:var(--fg);border-color:var(--line)}
+  .spacer{flex:1}
+  main{padding:18px 20px;max-width:1400px;margin:0 auto}
+  .hint{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .card .cap{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
+  .card .cap b{font-size:14px;font-weight:600}
+  .card .cap .loc{color:var(--muted);font-size:12px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#555;flex:none}
+  .dot.on{background:var(--accent2);box-shadow:0 0 8px var(--accent2)}
+  .card img{display:block;width:100%;background:#000;aspect-ratio:16/9;object-fit:cover}
+  .tag{font-size:11px;padding:2px 7px;border-radius:6px;background:#243040;color:#9fc4ea}
+  .tag.demo{background:#3a2f16;color:var(--warn)}
+  form.row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px}
+  label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted)}
+  select,input{background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+               border-radius:8px;padding:8px 10px;font-size:14px;min-width:120px}
+  button.primary{background:var(--accent);color:#04121f;border:none;padding:10px 18px;
+                 border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+  button.primary:disabled{opacity:.5;cursor:default}
+  .rec-list{display:flex;flex-direction:column;gap:8px}
+  .rec{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+       border-radius:10px;padding:10px 14px;cursor:pointer}
+  .rec.on{border-color:var(--accent)}
+  .rec .name{flex:1}
+  .rec .meta{color:var(--muted);font-size:12px}
+  .result{margin-top:18px}
+  video{width:100%;max-width:900px;border-radius:12px;background:#000;display:block}
+  .bar{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;margin:10px 0}
+  .bar i{display:block;height:100%;width:30%;background:var(--accent);animation:mv 1.1s infinite}
+  @keyframes mv{0%{margin-left:-30%}100%{margin-left:100%}}
+  .status{font-size:13px;color:var(--muted)}
+  .err{color:#ff7b72}
+  .card img{cursor:zoom-in}
+  .toolbar{margin-bottom:12px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+         padding:14px;margin-bottom:16px}
+  .frow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+  .panel label{font-size:12px;color:var(--muted)}
+  .panel input,.panel select{min-width:130px}
+  .card .cap .rm{margin-left:8px;color:var(--muted);cursor:pointer;font-size:12px}
+  .card .cap .rm:hover{color:#ff7b72}
+  #viewer{position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:50;display:flex;flex-direction:column}
+  #viewer .vbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#12161b;
+                border-bottom:1px solid var(--line);flex-wrap:wrap}
+  #viewer .vbar .spacer{flex:1}
+  #viewer .vtoggle{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  #viewer .vbar select{padding:7px 10px}
+  #viewer .vbody{flex:1;display:flex;min-height:0}
+  #viewer .vmain{flex:1;display:flex;align-items:center;justify-content:center;
+                 cursor:zoom-out;min-width:0}
+  #viewer .vmain img{max-width:100%;max-height:100%;object-fit:contain}
+  #viewer .vside{width:240px;background:#12161b;border-left:1px solid var(--line);
+                 display:flex;flex-direction:column;min-height:0}
+  #viewer .vshead{padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+  #viewer .shotlist{overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+  #viewer .shotlist img{width:100%;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}
+  #viewer .shotlist .sitem{font-size:11px;color:var(--muted);margin-top:3px}
+  button.ghost{background:#2a323c;color:var(--fg);border:none;padding:8px 14px;
+               border-radius:8px;cursor:pointer;font-size:14px}
+  #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:60;display:flex;
+            align-items:center;justify-content:center;cursor:zoom-out}
+  #lightbox img{max-width:98vw;max-height:98vh;object-fit:contain}
+  #compare{position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:51;display:flex;
+           flex-direction:column;align-items:center;justify-content:center;cursor:zoom-out}
+  #compare .cmp{display:flex;gap:8px;max-width:98vw}
+  #compare .cmp figure{margin:0;flex:1;position:relative}
+  #compare .cmp img{width:100%;max-height:86vh;object-fit:contain;background:#000}
+  #compare .clab{position:absolute;top:8px;left:10px;background:rgba(0,0,0,.6);
+                 color:#fff;font-size:12px;padding:2px 8px;border-radius:6px}
+  #compare .vtip{margin-top:10px;color:#8b97a3;font-size:12px}
+  .hide{display:none!important}
+  .shot-pending{border:1px dashed var(--line);border-radius:8px;padding:10px 12px;
+                font-size:12px;color:var(--muted);background:var(--panel)}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--accent);
+        border-top-color:transparent;border-radius:50%;animation:rot .8s linear infinite;
+        vertical-align:-2px;margin-right:6px}
+  @keyframes rot{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">明眸 <small>校园监控增强客户端 · 本机</small></div>
+  <nav>
+    <button id="tab-live" class="on" onclick="showTab('live')">实时</button>
+    <button id="tab-play" onclick="showTab('play')">回放</button>
+  </nav>
+  <div class="spacer"></div>
+  <span class="status" id="who"></span>
+</header>
+
+<main id="main">
+  <!-- 实时 -->
+  <section id="view-live">
+    <p class="hint">服务器（本机）实时推送的增强画面。轻量档，要跟得上帧率。演示画面为合成源，仅用于无摄像头时预览。</p>
+    <div class="toolbar">
+      <button class="primary" onclick="toggleAdd()">＋ 添加数据源</button>
+    </div>
+    <div id="batchPanel" class="panel hide">
+      <p class="hint" style="margin-top:0">每行一个取流地址，<b>各自端口原样保留</b>（如 rtsp://10.0.0.5:<b>8001</b>/... 与 rtsp://10.0.0.5:<b>8002</b>/... 不会混到一起）。
+         行尾可加 " # 名称" 作为通道名。导入后按 0.5 秒/路 错峰启动，避免几百路同时连接把交换机或 NVR 打挂。</p>
+      <textarea id="batchUrls" rows="8" style="width:100%;background:var(--panel2);color:var(--fg);
+        border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;font-family:monospace"
+        placeholder="rtsp://admin:pass@10.0.0.5:8001/Streaming/Channels/101 # 教学楼-101
+rtsp://admin:pass@10.0.0.5:8002/Streaming/Channels/101 # 教学楼-102
+rtsp://admin:pass@10.0.0.6:554/cam/realmonitor?channel=1&amp;subtype=0 # 宿舍-大门"></textarea>
+      <div class="frow" style="margin-top:10px">
+        <label>启动方式
+          <select id="batchStart">
+            <option value="1" selected>导入并逐路启动</option>
+            <option value="0">只导入不启动（之后手动连）</option>
+          </select>
+        </label>
+        <button class="primary" id="batchBtn" onclick="batchImport()">导入</button>
+        <button class="ghost" onclick="toggleBatch(false)">取消</button>
+      </div>
+      <div id="batchMsg" class="status" style="margin-top:10px"></div>
+    </div>
+    <div id="addPanel" class="panel hide">
+      <div class="frow">
+        <label>来源
+          <select id="srcOrigin">
+            <option value="server">监控服务器（正式）</option>
+            <option value="camera">摄像头直连（测试）</option>
+          </select>
+        </label>
+        <label>方式
+          <select id="srcKind" onchange="onKind()">
+            <option value="">直接填地址</option>
+            <option value="hikvision">海康（按主机构造）</option>
+            <option value="dahua">大华</option>
+            <option value="uniview">宇视</option>
+          </select>
+        </label>
+        <label id="fUrl">取流地址（rtsp/rtmp/http-flv/hls…）
+          <input id="srcUrl" placeholder="rtsp://user:pass@host:554/Streaming/Channels/101" style="min-width:340px">
+        </label>
+        <label id="fHost" class="hide">主机<input id="srcHost" placeholder="10.0.0.5"></label>
+        <label id="fPort" class="hide">端口<input id="srcPort" value="554" style="width:90px"></label>
+        <label id="fCh" class="hide">通道<input id="srcCh" value="1" style="width:80px"></label>
+        <label id="fUser" class="hide">账号<input id="srcUser" style="width:120px"></label>
+        <label id="fPass" class="hide">密码<input id="srcPass" type="password" style="width:120px"></label>
+        <label id="fSub" class="hide">码流
+          <select id="srcSub"><option value="0">主码流</option><option value="1">子码流</option></select>
+        </label>
+        <label>名称<input id="srcName" placeholder="可选" style="width:120px"></label>
+        <button class="primary" onclick="addSource()">连接</button>
+        <button class="primary" style="background:#2a323c;color:var(--fg)" onclick="toggleAdd(false)">取消</button>
+      </div>
+      <div id="addMsg" class="status" style="margin-top:10px"></div>
+    </div>
+    <div class="grid" id="streams"></div>
+  </section>
+
+  <!-- 回放 -->
+  <section id="view-play" class="hide">
+    <p class="hint">从录像目录选一段录像 → 拖到目标帧 → 截图并增强（按需重量档，慢一点没关系）。
+       也可对整段做离线增强任务（重量档，产出增强 MP4）。</p>
+    <div class="rec-list" id="recs"></div>
+    <div class="panel" id="recPlayerPanel" style="display:none">
+      <div class="frow" style="align-items:center">
+        <b id="recNow" style="font-size:14px">—</b>
+        <span class="spacer"></span>
+        <label>截图预设
+          <select id="recPreset"></select>
+        </label>
+        <button class="primary" id="recShotBtn" onclick="recShot()">截图并增强</button>
+      </div>
+      <video id="recVideo" controls preload="metadata" style="margin-top:12px"></video>
+      <div id="recShotStatus" class="status" style="margin-top:8px"></div>
+      <div class="result" id="recShots" style="margin-top:12px"></div>
+    </div>
+    <hr style="border-color:var(--line);margin:18px 0">
+    <p class="hint" style="margin-bottom:6px">整段离线增强（慢，产出增强 MP4）</p>
+    <form class="row" onsubmit="return false">
+      <label>增强档位
+        <select id="mode">
+          <option value="forensic" selected>取证/放大（最清晰，慢）</option>
+          <option value="balanced">标准（折中）</option>
+          <option value="realtime">轻量实时（最快）</option>
+        </select>
+      </label>
+      <label>放大倍率
+        <select id="scale"><option value="">按档位默认</option><option>1</option><option>2</option><option>3</option></select>
+      </label>
+      <label>起始秒<input id="start" type="number" min="0" placeholder="0" style="width:100px"></label>
+      <label>结束秒<input id="end" type="number" min="0" placeholder="不限" style="width:100px"></label>
+      <button class="primary" id="submitJob" onclick="submitJob()">开始增强</button>
+    </form>
+    <div id="jobStatus" class="status"></div>
+    <div class="result" id="jobResult"></div>
+  </section>
+</main>
+
+<script>
+const API = "/api/v1";
+let selectedRec = null;
+
+async function api(path, opts={}){
+  opts.headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+  const r = await fetch(API + path, opts);
+  if(!r.ok){ throw new Error((await r.text()) || r.status); }
+  return r.status === 204 ? null : r.json();
+}
+
+function showTab(t){
+  const live = t === "live";
+  document.getElementById("view-live").classList.toggle("hide", !live);
+  document.getElementById("view-play").classList.toggle("hide", live);
+  document.getElementById("tab-live").classList.toggle("on", live);
+  document.getElementById("tab-play").classList.toggle("on", !live);
+  if(live) loadStreams(); else loadRecs();
+}
+
+async function loadStreams(){
+  const box = document.getElementById("streams");
+  box.innerHTML = '<div class="status">加载中…</div>';
+  try{
+    const d = await api("/client/streams");
+    box.innerHTML = "";
+    streamPorts = {};
+    d.streams.forEach(s=>{
+      streamPorts[s.id] = s.view_port || null;
+      const el = document.createElement("div"); el.className = "card";
+      const isDemo = s.kind === "demo";
+      el.innerHTML = `
+        <div class="cap">
+          <span class="dot ${s.online?'on':''}"></span>
+          <b>${esc(s.name)}</b>
+          <span class="loc">${esc(s.location||"")}</span>
+          <span class="spacer" style="flex:1"></span>
+          <span class="rm" onclick="openCompare('${s.id}')">对比</span>
+          <span class="tag ${isDemo?'demo':''}">${isDemo?'演示':'摄像头'}</span>
+          ${(!isDemo && (s.tags||[]).includes('测试')) ? '<span class="tag demo">测试</span>' : ''}
+          ${isDemo ? '' : `<span class="rm" onclick="removeSource('${s.id}')">移除</span>`}
+        </div>
+        ${s.online
+          ? `<img title="点击进入全屏（可开增强 / 截图）" onclick="openViewer('${s.id}','${esc(s.name)}',${s.sub?1:0})" src="${liveUrl(s.id, false, s.view_port)}" alt="">`
+          : `<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--muted)">离线</div>`}
+      `;
+      box.appendChild(el);
+    });
+    // 还没有任何真实数据源时，直接把“连接设置”摊开，避免用户找不到入口
+    if(!d.streams.some(s => s.kind === "camera")) toggleAdd(true);
+  }catch(e){ box.innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
+}
+
+// ---- 多端口观看：MJPEG 长连接受浏览器「同源 ~6 并发」限制，
+// 服务端把各路轮转分配到多个本地端口，这里按端口拼图片地址 ----
+let streamPorts = {};
+function liveUrl(sid, enhanced, viewPort){
+  const path = enhanced
+    ? `${API}/client/live/${sid}.mjpeg`
+    : `${API}/client/live/${sid}/raw.mjpeg`;
+  const bust = `?t=${Date.now()}`;
+  return viewPort
+    ? `${location.protocol}//${location.hostname}:${viewPort}${path}${bust}`
+    : `${path}${bust}`;
+}
+
+async function loadRecs(){
+  const box = document.getElementById("recs");
+  box.innerHTML = '<div class="status">加载中…</div>';
+  try{
+    const d = await api("/client/recordings");
+    if(!d.recordings.length){ box.innerHTML = '<div class="status">录像目录为空：'+esc(d.dir)+'</div>'; return; }
+    box.innerHTML = "";
+    d.recordings.forEach(r=>{
+      const el = document.createElement("div"); el.className = "rec";
+      el.innerHTML = `<span class="name">${esc(r.name)}</span><span class="meta">${r.size_mb} MB</span>`;
+      el.onclick = ()=>{
+        selectedRec = r.name;
+        document.querySelectorAll(".rec").forEach(x=>x.classList.remove("on")); el.classList.add("on");
+        const h = document.getElementById("jobStatus"); if(h){ h.className="status"; h.textContent = "已选： " + r.name; }
+        openRecPlayer(r.name);
+      };
+      box.appendChild(el);
+    });
+    // 自动选中第一段，避免"没选就点开始增强"而毫无反应
+    const first = box.querySelector(".rec");
+    if(first){ selectedRec = d.recordings[0].name; first.classList.add("on"); openRecPlayer(d.recordings[0].name); }
+  }catch(e){ box.innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
+}
+
+async function submitJob(){
+  const st = document.getElementById("jobStatus");
+  if(!selectedRec){ st.className="err"; st.textContent="请先在上方点选一段录像，再点「开始增强」"; return; }
+  const btn = document.getElementById("submitJob"); btn.disabled = true;
+  document.getElementById("jobResult").innerHTML = "";
+  const payload = { recording: selectedRec, mode: document.getElementById("mode").value };
+  const sc = document.getElementById("scale").value; if(sc) payload.scale = parseInt(sc);
+  const a = document.getElementById("start").value; if(a) payload.start = parseFloat(a);
+  const b = document.getElementById("end").value; if(b) payload.end = parseFloat(b);
+  try{
+    const job = await api("/client/jobs", {method:"POST", body: JSON.stringify(payload)});
+    st.innerHTML = "任务已提交：" + job.id + ' <div class="bar"><i></i></div>';
+    pollJob(job.id);
+  }catch(e){ st.innerHTML = '<span class="err">提交失败：'+esc(e.message)+'</span>'; btn.disabled=false; }
+}
+
+// ---- 录像播放 + 截图增强 ----
+function openRecPlayer(name){
+  const panel = document.getElementById("recPlayerPanel");
+  panel.style.display = "";
+  document.getElementById("recNow").textContent = name;
+  const v = document.getElementById("recVideo");
+  v.src = `${API}/client/recordings/${encodeURIComponent(name)}/video?t=${Date.now()}`;
+  v.currentTime = 0;
+  document.getElementById("recShots").innerHTML = "";
+  document.getElementById("recShotStatus").textContent = "";
+}
+
+async function recShot(){
+  if(!selectedRec){ alert("请先在上方点选一段录像"); return; }
+  const v = document.getElementById("recVideo");
+  const t = v.currentTime || 0;
+  const sel = document.getElementById("recPreset");
+  const preset = sel.value || "forensic";
+  const presetText = (sel.selectedOptions[0] && sel.selectedOptions[0].text) || preset;
+  const labelText = `${presetText} @ ${t.toFixed(1)}s`;
+  const pending = addPendingShot("recShots", labelText);
+  document.getElementById("recShotStatus").textContent = "";
+  try{
+    const q = await api("/client/snapshot-recording", {method:"POST", body: JSON.stringify({
+      recording: selectedRec, time: t, preset, wait: false
+    })});
+    await pollStill(q.id, pending, labelText);
+  }catch(e){
+    pending.className = "shot-pending err";
+    pending.innerHTML = `${esc(labelText)} · 失败：${esc(e.message)}`;
+  }
+}
+
+async function pollJob(id){
+  const st = document.getElementById("jobStatus");
+  const btn = document.getElementById("submitJob");
+  try{
+    const j = await api("/client/jobs/"+id);
+    if(j.state === "done"){
+      btn.disabled = false;
+      st.textContent = `完成：处理 ${j.result.frames} 帧，用时 ${j.result.elapsed_s}s`;
+      document.getElementById("jobResult").innerHTML =
+        `<video controls src="${API}/client/jobs/${id}/result"></video>`;
+      return;
+    }
+    if(j.state === "failed"){
+      btn.disabled = false;
+      st.innerHTML = '<span class="err">失败：'+esc(j.error||"")+'</span>';
+      return;
+    }
+    st.innerHTML = `${j.state==='running'?'正在增强（重量档，慢是正常的）…':'排队中…'} 已处理 ${j.progress_frames||0} 帧<div class="bar"><i></i></div>`;
+    setTimeout(()=>pollJob(id), 1200);
+  }catch(e){ st.innerHTML = '<span class="err">'+esc(e.message)+'</span>'; btn.disabled=false; }
+}
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+// ---- 数据源管理 ----
+function toggleAdd(show){
+  const p = document.getElementById("addPanel");
+  const on = (show === undefined) ? p.classList.contains("hide") : show;
+  p.classList.toggle("hide", !on);
+}
+function toggleBatch(show){
+  const p = document.getElementById("batchPanel");
+  const on = (show === undefined) ? p.classList.contains("hide") : show;
+  p.classList.toggle("hide", !on);
+}
+async function batchImport(){
+  const msg = document.getElementById("batchMsg");
+  const urls = document.getElementById("batchUrls").value;
+  if(!urls.trim()){ msg.className="err"; msg.textContent="请先粘贴取流地址（每行一个）"; return; }
+  const btn = document.getElementById("batchBtn");
+  btn.disabled = true; msg.className = "status"; msg.textContent = "导入中…";
+  try{
+    const r = await api("/client/sources/batch", {method:"POST", body: JSON.stringify({
+      urls, start: document.getElementById("batchStart").value === "1"
+    })});
+    msg.innerHTML = `已导入 ${r.added} 路，成功启动 ${r.started}` +
+      (r.failed ? `，<span class="err">失败 ${r.failed}</span>（详情见下方列表状态）` : "");
+    loadStreams();
+  }catch(e){ msg.className="err"; msg.textContent = "导入失败：" + e.message; }
+  finally{ btn.disabled = false; }
+}
+function onKind(){
+  const direct = !document.getElementById("srcKind").value;
+  document.getElementById("fUrl").classList.toggle("hide", !direct);
+  ["fHost","fPort","fCh","fUser","fPass","fSub"].forEach(id =>
+    document.getElementById(id).classList.toggle("hide", direct));
+}
+async function addSource(){
+  const msg = document.getElementById("addMsg");
+  msg.textContent = "连接中…"; msg.className = "status";
+  const kind = document.getElementById("srcKind").value;
+  const payload = { name: document.getElementById("srcName").value.trim(),
+                    kind: document.getElementById("srcOrigin").value };
+  if(!kind){
+    payload.url = document.getElementById("srcUrl").value.trim();
+  }else{
+    Object.assign(payload, {
+      brand: kind,
+      host: document.getElementById("srcHost").value.trim(),
+      port: parseInt(document.getElementById("srcPort").value || "554"),
+      channel: parseInt(document.getElementById("srcCh").value || "1"),
+      username: document.getElementById("srcUser").value,
+      password: document.getElementById("srcPass").value,
+      sub: document.getElementById("srcSub").value === "1",
+    });
+  }
+  try{
+    const r = await api("/client/sources", {method:"POST", body: JSON.stringify(payload)});
+    if(r.started){ msg.textContent = "已连接：" + r.id; toggleAdd(false); loadStreams(); }
+    else { msg.className = "err"; msg.textContent = "已保存但未能启动：" + (r.error||""); }
+  }catch(e){ msg.className = "err"; msg.textContent = "失败：" + e.message; }
+}
+async function removeSource(id){
+  if(!confirm("移除数据源 " + id + " ？")) return;
+  try{ await api("/client/sources/" + encodeURIComponent(id), {method:"DELETE"}); loadStreams(); }
+  catch(e){ alert("移除失败：" + e.message); }
+}
+
+// ---- 全屏查看：实时增强开关 + 截图增强 ----
+let viewerId = null;
+function openViewer(id, name, sub){
+  viewerId = id;
+  document.getElementById("vTitle").textContent = name || id;
+  document.getElementById("enhToggle").checked = true;
+  const sel = document.getElementById("streamSel");
+  if(sel) sel.value = sub ? "1" : "0";
+  updateViewerSrc();
+  loadShots();
+  document.getElementById("viewer").classList.remove("hide");
+}
+async function setStream(){
+  if(!viewerId) return;
+  const sub = document.getElementById("streamSel").value === "1";
+  try{
+    await api(`/client/sources/${viewerId}/stream`, {method:"POST", body: JSON.stringify({sub})});
+    // 等管线切到新码流并产出新帧，再重连画面
+    setTimeout(updateViewerSrc, 2500);
+  }catch(e){ alert("切换码流失败：" + e.message); }
+}
+function updateViewerSrc(){
+  if(!viewerId) return;
+  const enh = document.getElementById("enhToggle").checked;
+  // 直接改 <img>.src 去切换 MJPEG 流时，浏览器容易卡住/不刷新；换成新的 <img> 元素最稳。
+  const old = document.getElementById("viewerImg");
+  const img = document.createElement("img");
+  img.id = "viewerImg"; img.alt = "";
+  img.src = liveUrl(viewerId, enh, streamPorts[viewerId]);
+  old.replaceWith(img);
+}
+function closeViewer(){
+  document.getElementById("viewer").classList.add("hide");
+  document.getElementById("viewerImg").src = "";
+  viewerId = null;
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+}
+// 截图不再占用按钮：点一次立刻在列表顶部放一张「处理中」占位卡，
+// 完成后原位替换成结果图。这样连续截图不用等上一张跑完。
+function addPendingShot(boxId, label){
+  const box = document.getElementById(boxId);
+  const el = document.createElement("div");
+  el.className = "shot-pending";
+  el.innerHTML = `<span class="spin"></span>${esc(label)} · 处理中…`;
+  box.prepend(el);
+  return el;
+}
+function shotCardHtml(item){
+  const extra = [item.size, item.elapsed ? (item.elapsed/1000).toFixed(1) + "s" : ""].filter(Boolean).join(" · ");
+  return `<img src="${esc(item.url)}?t=${Date.now()}" title="点击放大" onclick="openLightbox(this.src)">
+    <div class="sitem">${esc(item.label || "")}${extra ? (" · " + extra) : ""}</div>`;
+}
+
+// 截图任务轮询：服务端串行跑增强（一张 10~70 秒），这里只负责把状态贴到占位卡上。
+// 用「提交 → 轮询」而不是「发一个长请求等结果」：后者会让浏览器为每张截图占住
+// 一条连接（同源上限 6 条），连点几下就把整个页面的其它请求一起堵死。
+async function pollStill(jobId, pending, labelText){
+  const startedAt = Date.now();
+  for(;;){
+    await new Promise(r => setTimeout(r, 400));
+    const secs = ((Date.now() - startedAt) / 1000).toFixed(0);
+    let job;
+    try{ job = await api(`/client/snapshot-jobs/${jobId}`); }
+    catch(e){
+      pending.className = "shot-pending err";
+      pending.innerHTML = `${esc(labelText)} · 查询状态失败：${esc(e.message)}`;
+      return;
+    }
+    if(job.state === "queued"){
+      pending.innerHTML = `<span class="spin"></span>${esc(labelText)} · 排队中` +
+        (job.position ? `（第 ${job.position} 位）` : "") + ` · ${secs}s`;
+      continue;
+    }
+    if(job.state === "running"){
+      pending.innerHTML = `<span class="spin"></span>${esc(labelText)} · 增强中 · ${secs}s`;
+      continue;
+    }
+    if(job.state === "done" && job.result){
+      const r = job.result;
+      pending.className = "";
+      pending.style.cssText = "display:inline-block;margin:0 12px 12px 0;vertical-align:top;max-width:280px";
+      pending.innerHTML = shotCardHtml({url: r.url, label: r.label || labelText,
+                                        size: r.width + "×" + r.height, elapsed: job.elapsed_ms});
+      return;
+    }
+    pending.className = "shot-pending err";
+    pending.innerHTML = `${esc(labelText)} · 失败：${esc(job.error || "未知原因")}`;
+    return;
+  }
+}
+
+async function takeShot(){
+  if(!viewerId) return;
+  const sel = document.getElementById("shotPreset");
+  const preset = sel.value || "standard";
+  const presetText = (sel.selectedOptions[0] && sel.selectedOptions[0].text) || preset;
+  const hiRes = document.getElementById("shotHiRes");
+  // 点击立即出占位卡，不等服务端：这样连点也不会卡住界面
+  const pending = addPendingShot("shotList", `${presetText} · 实时抓帧`);
+  try{
+    const q = await api("/client/snapshot", {method:"POST", body: JSON.stringify({
+      stream_id: viewerId, preset, wait: false,
+      source: (hiRes && hiRes.checked) ? "camera" : "pipeline"
+    })});
+    await pollStill(q.id, pending, `${presetText} · 实时抓帧`);
+  }catch(e){
+    pending.className = "shot-pending err";
+    pending.innerHTML = `${esc(presetText)} · 失败：${esc(e.message)}`;
+  }
+}
+function addShot(item){
+  const box = document.getElementById("shotList");
+  const el = document.createElement("div");
+  el.innerHTML = shotCardHtml(item);
+  box.prepend(el);
+}
+async function loadShots(){
+  const box = document.getElementById("shotList");
+  box.innerHTML = "";
+  try{ const d = await api("/client/snapshots"); d.snapshots.forEach(s => addShot({url: s.url})); }catch(e){}
+}
+function openLightbox(src){
+  document.getElementById("lightboxImg").src = src;
+  document.getElementById("lightbox").classList.remove("hide");
+}
+async function loadPresets(){
+  try{
+    const d = await api("/client/presets");
+    const html = d.presets.map(p => `<option value="${p.key}">${esc(p.label)}</option>`).join("");
+    const live = document.getElementById("shotPreset");
+    live.innerHTML = html; live.value = "standard";
+    const rec = document.getElementById("recPreset");
+    if(rec){ rec.innerHTML = html; rec.value = "forensic"; }  // 录像截图默认用最重的取证档
+  }catch(e){}
+}
+document.addEventListener("keydown", e=>{
+  if(e.key === "Escape"){
+    document.getElementById("lightbox").classList.add("hide");
+    closeCompare();
+    closeViewer();
+  }
+});
+
+// 原图 / 增强 对比
+function openCompare(id){
+  const vp = streamPorts[id] || null;
+  document.getElementById("cmpRaw").src = liveUrl(id, false, vp);
+  document.getElementById("cmpEnh").src = liveUrl(id, true, vp);
+  document.getElementById("compare").classList.remove("hide");
+}
+function closeCompare(){
+  const c = document.getElementById("compare");
+  c.classList.add("hide");
+  document.getElementById("cmpRaw").src = "";
+  document.getElementById("cmpEnh").src = "";
+}
+
+// 直接进入，无登录
+document.getElementById("who").textContent = "本机使用";
+showTab("live");
+loadPresets();
+</script>
+<div id="viewer" class="hide">
+  <div class="vbar" onclick="event.stopPropagation()">
+    <b id="vTitle">实时</b>
+    <label class="vtoggle">实时增强<input type="checkbox" id="enhToggle" checked onchange="updateViewerSrc()"></label>
+    <label class="vtoggle">码流
+      <select id="streamSel" onchange="setStream()">
+        <option value="0">主码流（清晰）</option>
+        <option value="1">子码流（流畅）</option>
+      </select>
+    </label>
+    <select id="shotPreset"></select>
+    <label class="vtoggle" title="默认用管线里现成的帧，毫秒级；勾选后另开一路主码流抓原始高清帧，慢且可能影响预览">
+      高清抓帧<input type="checkbox" id="shotHiRes">
+    </label>
+    <button class="primary" id="shotBtn" onclick="takeShot()">截图并增强</button>
+    <span class="spacer"></span>
+    <button class="ghost" onclick="closeViewer()">关闭</button>
+  </div>
+  <div class="vbody">
+    <div class="vmain" onclick="closeViewer()"><img id="viewerImg" alt=""></div>
+    <aside class="vside">
+      <div class="vshead">增强截图（点击放大）</div>
+      <div id="shotList" class="shotlist"></div>
+    </aside>
+  </div>
+</div>
+
+<div id="lightbox" class="hide" onclick="this.classList.add('hide')">
+  <img id="lightboxImg" alt="">
+</div>
+
+<div id="compare" class="hide" onclick="closeCompare()">
+  <div class="cmp">
+    <figure><span class="clab">原图（未增强）</span><img id="cmpRaw" alt=""></figure>
+    <figure><span class="clab">增强后</span><img id="cmpEnh" alt=""></figure>
+  </div>
+  <div class="vtip">左：原始画面　右：增强后　·　点击任意处或按 Esc 退出</div>
+</div>
+
+</body>
+</html>

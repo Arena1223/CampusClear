@@ -1,0 +1,12 @@
+{
+  "models": {
+    "sr": {
+      "file": "realesr_general_x4v3.onnx",
+      "sha256": "09b757accd747d7e423c1d352b3e8f23e77cc5742d04bae958d4eb8082b76fa4",
+      "scale": 4,
+      "fp16": false,
+      "description": "Real-ESRGAN general-x4v3（SRVGGNetCompact，4× 通用超分）",
+      "source": "HF Heliosoph/realesrgan-onnx；原始权重 xinntao/Real-ESRGAN（BSD-3-Clause）"
+    }
+  }
+}

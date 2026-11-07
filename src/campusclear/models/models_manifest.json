@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "note": "所有权重需预先离线放置于 CAMPUSCLEAR_MODELS_DIR。sha256 必须与实际文件一致，否则服务启动时拒绝加载该阶段。",
+  "models": {
+    "lowlight": {
+      "file": "zerodce_pp_general.onnx",
+      "sha256": "",
+      "input_size": null,
+      "scale": 1,
+      "fp16": true,
+      "description": "零参考低光增强（Zero-DCE++ 轻量版），仅依赖输入图像自身估计光照曲线，无需成对训练数据，适合校园夜间监控这种缺少配对样本的场景",
+      "source": "自建/公开发布权重离线裁剪转换，见 tools/export_onnx.py"
+    },
+    "denoise": {
+      "file": "scunet_color_real_lite.onnx",
+      "sha256": "",
+      "input_size": null,
+      "scale": 1,
+      "fp16": true,
+      "description": "真实噪声盲降噪（SCUNet 精简通道版），面向监控摄像头高增益下产生的彩色噪点",
+      "source": "公开发布权重经结构化裁剪后离线转换 ONNX"
+    },
+    "deblur": {
+      "file": "nafnet_gopro_lite.onnx",
+      "sha256": "",
+      "input_size": null,
+      "scale": 1,
+      "fp16": true,
+      "description": "运动去模糊（NAFNet 轻量版），主要针对夜间慢快门与快速移动目标拖影",
+      "source": "公开发布权重经通道裁剪后离线转换 ONNX"
+    },
+    "sr": {
+      "file": "realesr_general_x4v3.onnx",
+      "sha256": "",
+      "input_size": null,
+      "scale": 4,
+      "fp16": false,
+      "description": "通用图像超分（Real-ESRGAN general-x4v3，SRVGGNetCompact 4×），面向压缩损伤与细节缺失；输出由增强器按计划倍率归一",
+      "source": "HF Heliosoph/realesrgan-onnx；原始权重 xinntao/Real-ESRGAN（BSD-3-Clause）"
+    }
+  }
+}

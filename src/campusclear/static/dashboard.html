@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CampusClear 明眸 · 离线运维面板</title>
+<style>
+  :root {
+    --bg: #f5f7fa; --panel: #ffffff; --line: #e3e8ef; --text: #1f2933;
+    --muted: #64748b; --accent: #1f6feb; --ok: #148f4b; --warn: #b26a00; --bad: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif; font-size: 14px; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header .tag { font-size: 12px; color: var(--ok); border: 1px solid var(--ok);
+    border-radius: 3px; padding: 1px 6px; }
+  header .spacer { flex: 1; }
+  main { padding: 20px 24px 48px; max-width: 1280px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 14px; margin: 0 0 12px; font-weight: 600; color: var(--text); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input, select, button { font-size: 13px; padding: 7px 9px; border: 1px solid var(--line);
+    border-radius: 4px; background: #fff; color: var(--text); font-family: inherit; }
+  input { min-width: 200px; }
+  button { background: var(--accent); color: #fff; border-color: var(--accent);
+    cursor: pointer; padding: 7px 14px; }
+  button.ghost { background: #fff; color: var(--text); border-color: var(--line); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi { border: 1px solid var(--line); border-radius: 5px; padding: 10px 12px; }
+  .kpi .v { font-size: 20px; font-weight: 600; }
+  .kpi .k { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px;
+    border: 1px solid currentColor; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .muted { color: var(--muted); }
+  pre { background: #f8fafc; border: 1px solid var(--line); border-radius: 4px;
+    padding: 10px; overflow: auto; font-size: 12px; margin: 0; }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 12px; padding: 0 24px 32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CampusClear 明眸 · 运维面板</h1>
+  <span class="tag">离线模式</span>
+  <span id="whoami" class="muted"></span>
+  <span class="spacer"></span>
+  <button class="ghost" id="btn-refresh">刷新</button>
+  <button class="ghost hidden" id="btn-logout">退出</button>
+</header>
+
+<main>
+  <!-- 登录 -->
+  <section class="card" id="login-card">
+    <h2>登录</h2>
+    <div class="row">
+      <div><label>用户名</label><input id="username" value="admin" autocomplete="username" /></div>
+      <div><label>密码</label><input id="password" type="password" autocomplete="current-password" /></div>
+      <button id="btn-login">登录</button>
+    </div>
+    <p class="muted" style="margin:10px 0 0;font-size:12px">
+      本服务运行于校园内网，全部数据与画面不出内网。连续登录失败会锁定账号。
+    </p>
+  </section>
+
+  <div id="panel" class="hidden">
+    <section class="card">
+      <h2>系统概览</h2>
+      <div class="grid" id="kpis"></div>
+      <p class="muted" id="governor" style="margin:12px 0 0"></p>
+    </section>
+
+    <section class="card">
+      <h2>视频通道</h2>
+      <table>
+        <thead><tr>
+          <th>ID</th><th>名称</th><th>位置</th><th>状态</th><th>FPS</th>
+          <th>丢帧率</th><th>复用率</th><th>平均延迟</th><th>输出流</th><th></th>
+        </tr></thead>
+        <tbody id="streams"></tbody>
+      </table>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">
+        「复用率」表示因画面静止或降频而跳过推理的帧占比，是算力节省的直接体现。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>离线模型状态</h2>
+      <table>
+        <thead><tr><th>阶段</th><th>权重文件</th><th>完整性</th><th>执行提供器</th><th>说明</th></tr></thead>
+        <tbody id="models"></tbody>
+      </table>
+    </section>
+
+    <section class="card" id="audit-card">
+      <h2>审计日志（最近 30 条）</h2>
+      <table>
+        <thead><tr><th>时间(UTC)</th><th>用户</th><th>操作</th><th>对象</th><th>来源 IP</th></tr></thead>
+        <tbody id="audit"></tbody>
+      </table>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">仅管理员可见。</p>
+    </section>
+  </div>
+
+  <section class="card hidden" id="error-card"><h2>提示</h2><pre id="error-text"></pre></section>
+</main>
+
+<footer>数据目录、日志与审计记录均保存在本地磁盘；服务不发起任何外网连接。</footer>
+
+<script>
+const API = "/api/v1";
+let token = sessionStorage.getItem("cc_token") || "";
+
+function el(id) { return document.getElementById(id); }
+function show(id, on) { el(id).classList.toggle("hidden", !on); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => (
+  {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+async function api(path, options = {}) {
+  const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
+  if (token) headers["Authorization"] = "Bearer " + token;
+  const res = await fetch(API + path, Object.assign({}, options, { headers }));
+  if (res.status === 401) { logout(); throw new Error("登录状态已失效，请重新登录"); }
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const j = await res.json(); detail = j.detail || detail; } catch (e) {}
+    throw new Error(detail);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function fail(message) {
+  show("error-card", true);
+  el("error-text").textContent = message;
+}
+function clearError() { show("error-card", false); }
+
+async function login() {
+  clearError();
+  try {
+    const data = await fetch(API + "/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: el("username").value, password: el("password").value })
+    }).then(async r => {
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.detail || "登录失败"); }
+      return r.json();
+    });
+    token = data.access_token;
+    sessionStorage.setItem("cc_token", token);
+    el("password").value = "";
+    boot();
+  } catch (e) { fail(e.message); }
+}
+
+function logout() {
+  token = "";
+  sessionStorage.removeItem("cc_token");
+  show("panel", false); show("login-card", true); show("btn-logout", false);
+}
+
+function kpi(value, key, cls) {
+  return '<div class="kpi"><div class="v ' + (cls || "") + '">' + esc(value) +
+         '</div><div class="k">' + esc(key) + '</div></div>';
+}
+
+async function refresh() {
+  clearError();
+  try {
+    const me = await api("/auth/me");
+    el("whoami").textContent = me.username + "（" + me.role + "）";
+
+    const status = await api("/system/status");
+    const load = status.load || {};
+    const gpu = status.gpu;
+    const cls = load.level === "NORMAL" ? "ok" : (load.level === "ECONOMY" ? "warn" : "bad");
+
+    el("kpis").innerHTML =
+      kpi(status.stream_count + " / " + status.max_streams, "在线通道") +
+      kpi(load.level || "-", "负载档位", cls) +
+      kpi(gpu ? gpu.utilization.toFixed(0) + "%" : "不可观测", "GPU 利用率") +
+      kpi(gpu ? gpu.memory_used_mb.toFixed(0) + " / " + gpu.memory_total_mb.toFixed(0) + " MB" : "-", "显存占用") +
+      kpi(status.settings.sr_scale + "x", "超分倍率") +
+      kpi(status.enhancer, "推理链路");
+    el("governor").textContent = "调度决策：" + (load.reason || "-");
+
+    el("streams").innerHTML = (status.streams || []).map(s => {
+      const state = s.connected
+        ? '<span class="pill ok">正常</span>'
+        : (s.running ? '<span class="pill warn">重连中</span>' : '<span class="pill bad">停止</span>');
+      return "<tr>" +
+        "<td>" + esc(s.camera_id) + "</td>" +
+        "<td>" + esc(s.name) + "</td>" +
+        "<td>" + esc(s.location) + "</td>" +
+        "<td>" + state + "</td>" +
+        "<td>" + (s.effective_fps || 0).toFixed(1) + "</td>" +
+        "<td>" + ((s.drop_ratio || 0) * 100).toFixed(2) + "%</td>" +
+        "<td>" + ((s.reuse_ratio || 0) * 100).toFixed(0) + "%</td>" +
+        "<td>" + (s.avg_latency_ms || 0).toFixed(0) + " ms</td>" +
+        "<td class='muted'>" + esc(s.output_url) + "</td>" +
+        "<td><button class='ghost' data-restart='" + esc(s.camera_id) + "'>重启</button></td>" +
+        "</tr>";
+    }).join("") || "<tr><td colspan='10' class='muted'>尚未配置通道</td></tr>";
+
+    document.querySelectorAll("[data-restart]").forEach(btn => {
+      btn.onclick = async () => {
+        try { await api("/cameras/" + btn.dataset.restart + "/restart", { method: "POST" }); await refresh(); }
+        catch (e) { fail(e.message); }
+      };
+    });
+
+    const modelData = await api("/system/models");
+    el("models").innerHTML = (modelData.models || []).map(m => {
+      const intact = (m.integrity || "").indexOf("ok") === 0;
+      return "<tr><td>" + esc(m.stage) + "</td><td>" + esc(m.file || "-") + "</td>" +
+        "<td class='" + (intact ? "ok" : "bad") + "'>" + esc(m.integrity || "-") + "</td>" +
+        "<td>" + esc(m.provider || "经典算法兜底") + "</td>" +
+        "<td class='muted'>" + esc(m.description || "") + "</td></tr>";
+    }).join("");
+
+    if (me.role === "admin") {
+      show("audit-card", true);
+      const logs = await api("/audit?limit=30");
+      el("audit").innerHTML = logs.map(l =>
+        "<tr><td class='muted'>" + esc(l.ts) + "</td><td>" + esc(l.username) + "</td>" +
+        "<td>" + esc(l.action) + "</td><td>" + esc(l.target) + "</td>" +
+        "<td class='muted'>" + esc(l.client_ip) + "</td></tr>").join("");
+    } else {
+      show("audit-card", false);
+    }
+  } catch (e) {
+    if (token) { fail(e.message); }
+  }
+}
+
+function boot() {
+  show("login-card", false);
+  show("panel", true);
+  show("btn-logout", true);
+  refresh();
+  if (window.__ccTimer) { clearInterval(window.__ccTimer); }
+  window.__ccTimer = setInterval(refresh, 5000);
+}
+
+el("btn-login").onclick = login;
+el("btn-refresh").onclick = refresh;
+el("btn-logout").onclick = logout;
+el("password").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+
+if (token) { boot(); } else { show("login-card", true); }
+</script>
+</body>
+</html>
